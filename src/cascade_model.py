@@ -1,10 +1,13 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import random
+import numpy as np
 
 
-def hierarchy_pos(G, root, width=1., vert_gap=0.2, vert_loc=0, xcenter=0.5,
-                  pos=None, parent=None):
+def generate_random_value(probabilities):
+    return np.random.choice(range(len(probabilities)), p=probabilities)
+
+
+def hierarchy_pos(G, root, width=1., vert_gap=0.2, vert_loc=0, xcenter=0.5, pos=None, parent=None):
     """
     If there is a cycle that is reachable from root, then this will see infinite recursion.
     G: the graph
@@ -35,43 +38,45 @@ def hierarchy_pos(G, root, width=1., vert_gap=0.2, vert_loc=0, xcenter=0.5,
     return pos
 
 
-theta = 0.1
+class MyDiGraph(nx.DiGraph):
+    def compute_degree_theta_sum(self, theta_power):
+        return sum(map(lambda n: self.degree(n) ** theta_power, self.nodes))
+
+    def _calculate_probability(self, node, theta_power, degree_sum=None):
+        if self.degree(node) == 0:
+            return 0
+
+        if degree_sum is None:
+            degree_sum = self.compute_degree_theta_sum(theta_power)
+
+        return self.degree(node) ** theta_power / degree_sum
+
+    def calculate_probabilities(self, theta_power):
+        degree_sum = self.compute_degree_theta_sum(theta_power)
+        return [self._calculate_probability(node, theta_power, degree_sum) for node in self.nodes]
+
+    @classmethod
+    def generate_cascade(cls, size, theta_power):
+        graph = cls()
+        graph.add_node(0)
+        graph.add_node(1)
+        graph.add_edge(0, 1)
+
+        for new_node in range(2, size):
+            probabilities = graph.calculate_probabilities(theta_power)
+            graph_node = generate_random_value(probabilities)
+            graph.add_node(new_node)
+            graph.add_edge(graph_node, new_node)
+
+        return graph
+
+
+theta = 1
 N = 100
 
 
-def compute_degree_theta_sum(graph, theta_power):
-    return sum(map(lambda node: graph.degree(node) ** theta_power, graph.nodes))
-
-
-G = nx.DiGraph()
-G.add_node(0)
-G.add_node(1)
-G.add_edge(0, 1)
-
-for i in range(2, N):
-
-    random_value = random.uniform(0, 1)
-    new = [x for x in G.nodes if len(G.succ[x].keys()) < 3]
-    random_value1 = random.uniform(0, 1)
-    if random_value1 < 0.5:
-        for it in range(len(list(new))):
-            node_i = random.choice(list(new))
-            temp = compute_degree_theta_sum(G, theta)
-            probability = G.degree(node_i) ** theta / compute_degree_theta_sum(G, theta)
-            # print(probability)
-            if (probability > random_value) and i not in list(G.nodes):
-                G.add_node(i)
-                G.add_edge(node_i, i)
-    else:
-        for node_i in list(set(G.nodes) - set(new)):
-            temp = compute_degree_theta_sum(G, theta)
-            probability = G.degree(node_i) ** theta / compute_degree_theta_sum(G, theta)
-            # print(probability)
-            if (probability > random_value) and i not in list(G.nodes):
-                G.add_node(i)
-                G.add_edge(node_i, i)
-print(set(G.nodes) - set(new), new, G.nodes)
-pos = hierarchy_pos(G, 0)
-nx.draw(G, pos=pos, with_labels=True)
-plt.show()
-print(nx.average_shortest_path_length(G))
+if __name__ == '__main__':
+    cascade = MyDiGraph.generate_cascade(N, theta)
+    pos = hierarchy_pos(cascade, 0)
+    nx.draw(cascade, pos=pos, with_labels=True)
+    plt.show()
