@@ -8,7 +8,7 @@ probabilityQ = 0.01 #q<p B
 probabilityR = 1.0-probabilityP-probabilityQ #C
 coeffL = 0.01
 coeffV = 0.02
-time = 1000
+time = 10000
 
 G = nx.DiGraph()
 G.add_node(0)
@@ -65,25 +65,35 @@ for step in range(time):
             G.add_edge(node1, node2)
 
 
-nx.draw(G, with_labels=True, node_color = "blue", node_shape='o', alpha = 0.9, linewidths = 6)
-plt.show()
+#nx.draw(G, with_labels=True, node_color = "blue", node_shape='o', alpha = 0.9, linewidths = 6)
+#plt.show()
 
 lambdaIn = (1+coeffL*(probabilityR+probabilityQ))/(1.0-probabilityQ)+1
 lambdaOut = (1+coeffV*(probabilityR+probabilityQ))/(1-probabilityP)+1
 print "LambdaIn", lambdaIn
 print "LambdaOut", lambdaOut
-powerLaw = 0
+lambd = 0
 min = 1
 for i in G.nodes():
-    powerLaw+= np.log(G.degree(i)/float(min))
-print "Power law",1+numOfNode*(1.0/powerLaw)
-
+    lambd+= np.log(G.degree(i)/float(min))
+lambd = 1+numOfNode*(1.0/lambd)
+print "Power law", lambd
 ba_c = nx.degree_centrality(G)
 # To convert normalized degrees to raw degrees
 ba_c = {k:int(v*(len(G)-1)) for k,v in ba_c.iteritems()}
 plt.xscale('log')
 plt.yscale('log')
-plt.scatter(ba_c.keys(),ba_c.values(),c='b',marker='x')
-plt.xlabel('Connections')
-plt.ylabel('Frequency')
+plt.scatter(ba_c.keys(),ba_c.values(),c='b',marker='x', label = "Users activity")
+y = range(1,len(ba_c.keys()))
+lambd = -lambd
+ylambd = [j**lambd*time for j in y]
+xArray = [1]
+step = (20000.0)/float(len(ylambd))
+for x in range(len(ylambd)-1):
+    xArray.append(xArray[x]+step)
+plt.plot(xArray, ylambd, '-', label='Lambda='+str(lambd), color = "orange")
+plt.ylim([0.8,200])
+plt.xlabel('Degree count (log)')
+plt.ylabel('Users count (log)')
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 plt.show()
