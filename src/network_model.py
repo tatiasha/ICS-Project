@@ -1,20 +1,18 @@
 import networkx as nx
-import numpy as np
+import math
 import matplotlib.pyplot as plt
 import random
 
-probabilityP = 0.1 #A
-probabilityQ = 0.01 #q<p B
-probabilityR = 1.0-probabilityP-probabilityQ #C
-coeffL = 0.01
-coeffV = 0.02
+probabilityP = 0.06
+probabilityQ = 0.05 #q<p
+probabilityR = 1.0-probabilityP-probabilityQ
 time = 10000
 
 G = nx.DiGraph()
 G.add_node(0)
 
-""""
-At each time step,
+"""
+At each time step
 with probability p, a new node is created attaching to a directed node,
 with probability q, a new node is created attached by a directed link 
 with probability r, a directed link is created between the old nodes.
@@ -23,16 +21,18 @@ for step in range(time):
 
     arrayNode = list(G.nodes)
     numOfNode = len(arrayNode)
+    arrayNodeDegree = []
     allIO = 0 #all incoming/outgoing links in the network
 
     newIn = []
     newOut = []
-    for i in range(numOfNode):
-        allIO+=G.in_degree(arrayNode[i])
-        if G.in_degree(arrayNode[i]) > 0:
-            newIn.append(arrayNode[i])
-        if  G.out_degree(arrayNode[i]) > 1:
-            newOut.append(arrayNode[i])
+    for i in arrayNode:
+        allIO+=G.in_degree(i)
+        if G.in_degree(i) > 0:
+            newIn.append(i)
+        if  G.out_degree(i) > 3:
+            newOut.append(i)
+        arrayNodeDegree.append(G.degree(i))
 
     random_valueA = random.random()
     random_valueB = random.random()
@@ -68,32 +68,25 @@ for step in range(time):
 #nx.draw(G, with_labels=True, node_color = "blue", node_shape='o', alpha = 0.9, linewidths = 6)
 #plt.show()
 
-lambdaIn = (1+coeffL*(probabilityR+probabilityQ))/(1.0-probabilityQ)+1
-lambdaOut = (1+coeffV*(probabilityR+probabilityQ))/(1-probabilityP)+1
-print "LambdaIn", lambdaIn
-print "LambdaOut", lambdaOut
-lambd = 0
-min = 1
-for i in G.nodes():
-    lambd+= np.log(G.degree(i)/float(min))
-lambd = 1+numOfNode*(1.0/lambd)
-print "Power law", lambd
-ba_c = nx.degree_centrality(G)
-# To convert normalized degrees to raw degrees
-ba_c = {k:int(v*(len(G)-1)) for k,v in ba_c.iteritems()}
+ba_c = [G.degree(x) for x in G.nodes]
+ba_c.sort()
+y = list(set(ba_c))
+y.sort()
+
+exp = 0
+for d in y:
+    exp+=math.log10(d/y[0])
+exp = 1+ len(y)/exp
+print ("Lambda", exp)
+
 plt.xscale('log')
 plt.yscale('log')
-plt.scatter(ba_c.keys(),ba_c.values(),c='b',marker='x', label = "Users activity")
-y = range(1,len(ba_c.keys()))
-lambd = -lambd
-ylambd = [j**lambd*time for j in y]
-xArray = [1]
-step = (20000.0)/float(len(ylambd))
-for x in range(len(ylambd)-1):
-    xArray.append(xArray[x]+step)
-plt.plot(xArray, ylambd, '-', label='Lambda='+str(lambd), color = "orange")
-plt.ylim([0.8,200])
-plt.xlabel('Degree count (log)')
+x = y
+yA = [ba_c.count(y[i])/float(len(ba_c)) for i in range(len(y))]
+plt.scatter(x,yA,c='b',marker='x', label = "Users activity")
+ylambd = [i**-exp for i in y]
+plt.plot(y, ylambd, label='Lambda = -'+str(exp), color = "orange")
+plt.xlabel('Probability (log)')
 plt.ylabel('Users count (log)')
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 plt.show()
