@@ -113,5 +113,5 @@ def saveNetwork(path, G):
     lmd = getLambda(networkDegreesList)
     plotDegree(lmd, networkDegrees, networkDegreesList)
     
-    #path = "/Users/tatiana/Documents/Magistracy/1 semestr/Introduction to Computer Science/Project/nts.csv"
+    #path = ""
     #saveNetwork(path, network)
