@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import random
 
-def getModel(time, probabilityP, probabilityQ, per):
+def getModel(time, probabilityP, probabilityQ,probabilityD, per):
     probabilityR = 1.0-probabilityP-probabilityQ
     G = nx.DiGraph()
     G.add_node(0)
@@ -15,19 +15,24 @@ def getModel(time, probabilityP, probabilityQ, per):
     with probability r, a directed link is created between the old nodes.
     """
     for step in range(time):
+
         arrayNode = list(G.nodes)    
         newIn = []
         newOut = []
+        D = []
         
         for i in arrayNode:
             if G.in_degree(i) > 0:
                 newIn.append(i)
             if  G.out_degree(i) > per:
                 newOut.append(i)
+            if G.degree(i)<per:
+                D.append(i)
 
         random_valueA = random.random()
         random_valueB = random.random()
         random_valueC = random.random()
+        random_valueD = random.random()
 
         if random_valueA < probabilityP:
             if newIn == []:
@@ -46,14 +51,14 @@ def getModel(time, probabilityP, probabilityQ, per):
                 G.add_edge(step, node_i)
 
         if random_valueC < probabilityR:
-            if newOut+newIn == []:
                 node1 = random.choice(arrayNode)
                 node2 = random.choice(arrayNode)
                 G.add_edge(node1, node2)
-            else:
-                node1 = random.choice(newIn+newOut)
-                node2 = random.choice(newIn+newOut)
-                G.add_edge(node1, node2)
+        
+        if D != []:
+            if random_valueD < probabilityD:
+                node_i = random.choice(D)
+                G.remove_node(node_i)
 
     #nx.draw(G, with_labels=True, node_color = "blue", node_shape='o', alpha = 0.9, linewidths = 6)
     #plt.show()
@@ -95,6 +100,7 @@ def saveNetwork(path, G):
  if __name__=="__main__":
     probabilityP = 0.067
     probabilityQ = 0.042 #q<p
+    probabilityD = 0.002
     time = 10000
     per = 0.1
     network = getModel(time, probabilityP, probabilityQ, per)
