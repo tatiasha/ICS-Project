@@ -142,10 +142,14 @@ class Cascader:
         average_statistics = defaultdict(defaultdict)
 
         for size in overall_statistics:
+
             list_of_average_pathes = list(map(lambda metrics: metrics[0], overall_statistics[size]))
             list_of_degree_variance = list(map(lambda metrics: metrics[1], overall_statistics[size]))
+
             average_statistics[size]['average_path'] = sum(list_of_average_pathes) / len(list_of_average_pathes)
             average_statistics[size]['degree_variance'] = sum(list_of_degree_variance) / len(list_of_degree_variance)
+            average_statistics[size]['average_path_std'] = np.std(list_of_average_pathes)
+            average_statistics[size]['degree_variance_std'] = np.std(list_of_degree_variance)
 
         with open(self.statistics_file_path, 'w') as fp:
             json.dump(average_statistics, fp)
@@ -154,15 +158,97 @@ class Cascader:
         with open(os.path.join(self.statistics_file_path)) as fp:
             data = json.load(fp)
 
-        x = sorted(data.keys())
-        average_path = list(map(lambda size: data[size]['average_path'], x))
+        x = sorted(map(int, data.keys()))
+        average_path = list(map(lambda size: data[str(size)]['average_path'], x))
         plt.title('Average path length')
         plt.plot(x, average_path)
         plt.show()
 
 
-if __name__ == '__main__':
-    analyzer = Cascader(config.TEST_DATA_DIR, config.TEST_DATA_METRICS, config.TEST_DATA_STATISTICS)
-    analyzer.generate_cascades([10, 20, 30, 40], 10, 1)
+def make_list_of_dirs(theta_list):
+    result_list = []
+
+    for theta in theta_list:
+        folder_for_theta = 'theta_{}'.format('_'.join(str(theta).split('.')))
+        data_folder = os.path.join(config.DATA_DIR, folder_for_theta)
+        result_list.append(data_folder)
+
+    return result_list
+
+
+def prepare_data_for_plot(list_of_dirs, vk_folder, field):
+    total_data = []
+    list_of_dirs += [vk_folder]
+    for folder in list_of_dirs:
+        statistics_file = os.path.join(folder, 'statistics.json')
+        with open(statistics_file) as fp:
+            local_data = json.load(fp)
+
+        x = sorted(map(int, local_data.keys()))
+        average_path = list(map(lambda size: local_data[str(size)][field], x))
+        total_data += [x, average_path]
+
+    with open(os.path.join(vk_folder, 'statistics.json')) as fp:
+        vk_data = json.load(fp)
+        e = [vk_data[str(size)][field + '_std'] for size in sorted(list(map(int, vk_data.keys())))]
+
+    total_data += [e]
+    return total_data
+
+
+def generate_cascades_by_theta_list(theta_list, folder_list):
+    for i, theta in enumerate(theta_list):
+        data_folder = folder_list[i]
+        data_metrics = os.path.join(data_folder, 'list_of_metrics.json')
+        data_statistics = os.path.join(data_folder, 'statistics.json')
+
+        analyzer = Cascader(data_folder, data_metrics, data_statistics)
+        analyzer.generate_cascades([10, 20, 30, 40, 50], 100, theta_power=theta)
+        analyzer.analyze()
+        print(theta, 'ready')
+
+
+def analyze_vk_data():
+    data_folder = os.path.join(config.DATA_DIR, 'cascades')
+    data_metrics = os.path.join(data_folder, 'list_of_metrics.json')
+    data_statistics = os.path.join(data_folder, 'statistics.json')
+    analyzer = Cascader(data_folder, data_metrics, data_statistics)
     analyzer.analyze()
-    analyzer.show_cascades_plots()
+    # analyzer.show_cascades_plots()
+
+
+VK_DATA_FOLDER = os.path.join(config.DATA_DIR, 'cascades')
+THETA = [1.6, 1.8, 2, 2.2]
+
+
+def plot_all_data(data, title):
+    plt.title(title)
+
+    for i, theta in enumerate(THETA):
+        plt.plot(data[2 * i], data[2 * i + 1])
+
+    plt.errorbar(data[-3], data[-2], data[-1], fmt='bs--')
+
+    plt.legend(['theta = {}'.format(str(theta)) for theta in THETA] + ['vk'])
+    plt.grid()
+
+    plt.xlabel('Size of cascade')
+    plt.ylabel(title.lower())
+
+    plt.show()
+
+
+degree_field = 'degree_variance'
+degree_title = 'Degree variance'
+
+path_field = 'average_path'
+path_title = 'Shortest average path'
+
+if __name__ == '__main__':
+    field = degree_field
+    title = degree_title
+    dirs_list = make_list_of_dirs(THETA)
+    # generate_cascades_by_theta_list(THETA, dirs_list)
+    prepared_data = prepare_data_for_plot(dirs_list, VK_DATA_FOLDER, field)
+    plot_all_data(prepared_data, title)
+    # analyze_vk_data()
